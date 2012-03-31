@@ -1,8 +1,12 @@
 from requests.exceptions import TooManyRedirects
 
+
+DEFAULT_REDIRECT_KEY_PREFIX = 'redirect'
+
+
 class RedirectManager(object):
 
-    def __init__(self, key_prefix, cache):
+    def __init__(self, cache, key_prefix=DEFAULT_REDIRECT_KEY_PREFIX):
         self.key_prefix = key_prefix
         self.cache = cache
 

@@ -1,13 +1,14 @@
 from dogbutler.utils.cache import get_cache_key, learn_cache_key, get_max_age
 
 
-CACHE_MANAGER_LONG_TERM_CACHE_KEY_PREFIX = 'longterm'
-CACHE_MANAGER_LONG_TERM_CACHE_SECONDS = 60 * 60 * 24 * 30
+DEFAULT_CACHE_KEY_PREFIX = 'dogbutler'
+LONG_TERM_CACHE_KEY_PREFIX = 'longterm'
+LONG_TERM_CACHE_SECONDS = 60 * 60 * 24 * 365 * 10       # 10 years
 
 
 class CacheManager(object):
 
-    def __init__(self, key_prefix, cache, cache_anonymous_only=False):
+    def __init__(self, cache, key_prefix=DEFAULT_CACHE_KEY_PREFIX, cache_anonymous_only=False):
         self.key_prefix = key_prefix
         self.cache = cache
         self.cache_anonymous_only = cache_anonymous_only
@@ -54,7 +55,7 @@ class CacheManager(object):
         2. Previous response has 'Last-Modified' header.
         """
         if 'If-Modified-Since' not in request.headers:
-            cache_key = get_cache_key(request, CACHE_MANAGER_LONG_TERM_CACHE_KEY_PREFIX+self.key_prefix, 'GET', cache=self.cache)
+            cache_key = get_cache_key(request, LONG_TERM_CACHE_KEY_PREFIX+self.key_prefix, 'GET', cache=self.cache)
             if cache_key is not None:
                 response = self.cache.get(cache_key, None)
                 if response is not None:
@@ -68,7 +69,7 @@ class CacheManager(object):
         2. Previous response has 'ETag' header.
         """
         if 'If-None-Match' not in request.headers:
-            cache_key = get_cache_key(request, CACHE_MANAGER_LONG_TERM_CACHE_KEY_PREFIX+self.key_prefix, 'GET', cache=self.cache)
+            cache_key = get_cache_key(request, LONG_TERM_CACHE_KEY_PREFIX+self.key_prefix, 'GET', cache=self.cache)
             if cache_key is not None:
                 response = self.cache.get(cache_key, None)
                 if response is not None:
@@ -76,7 +77,7 @@ class CacheManager(object):
                         request.headers['If-None-Match'] = response['ETag']
 
     def process_304_response(self, request, response):
-        cache_key = get_cache_key(request, CACHE_MANAGER_LONG_TERM_CACHE_KEY_PREFIX+self.key_prefix, 'GET', cache=self.cache)
+        cache_key = get_cache_key(request, LONG_TERM_CACHE_KEY_PREFIX+self.key_prefix, 'GET', cache=self.cache)
         if cache_key is None:
             return None
         cached_response = self.cache.get(cache_key, None)
@@ -124,16 +125,16 @@ class CacheManager(object):
 #        patch_response_headers(response, timeout)
         if timeout:
             cache_key = learn_cache_key(request, response, timeout, self.key_prefix, cache=self.cache)
-            long_term_cache_key = learn_cache_key(request, response, CACHE_MANAGER_LONG_TERM_CACHE_SECONDS, CACHE_MANAGER_LONG_TERM_CACHE_KEY_PREFIX+self.key_prefix, cache=self.cache)
+            long_term_cache_key = learn_cache_key(request, response, LONG_TERM_CACHE_SECONDS, LONG_TERM_CACHE_KEY_PREFIX+self.key_prefix, cache=self.cache)
             if hasattr(response, 'render') and callable(response.render):
 
                 # TODO: Investigate 'post_render_callback'
                 def post_render_callback(r):
                     self.cache.set(cache_key, r, timeout)
-                    self.cache.set(long_term_cache_key, r, CACHE_MANAGER_LONG_TERM_CACHE_SECONDS)
+                    self.cache.set(long_term_cache_key, r, LONG_TERM_CACHE_SECONDS)
 
                 response.add_post_render_callback(post_render_callback)
             else:
                 self.cache.set(cache_key, response, timeout)
-                self.cache.set(long_term_cache_key, response, CACHE_MANAGER_LONG_TERM_CACHE_SECONDS)
+                self.cache.set(long_term_cache_key, response, LONG_TERM_CACHE_SECONDS)
         return response
