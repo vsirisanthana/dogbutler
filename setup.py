@@ -20,6 +20,6 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
         "License :: OSI Approved :: GNU General Public License (GPL)"
     ],
-    packages = ['dogbutler'],
+    packages = ['dogbutler', 'dogbutler.utils'],
     install_requires = ['dummycache', 'requests'],
 )
