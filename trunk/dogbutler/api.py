@@ -8,17 +8,12 @@ from .models import Request
 from .redirect import RedirectManager
 
 
-DEFAULT_KEY_PREFIX = 'dogbutler'
-DEFAULT_COOKIE_KEY_PREFIX = 'cookie'
-DEFAULT_REDIRECT_KEY_PREFIX = 'redirect'
-
-
 def get(url, queue=None, **kwargs):
 
     # Create managers
-    cache_manager = CacheManager(key_prefix=DEFAULT_KEY_PREFIX, cache=get_default_cache())
-    cookie_manager = CookieManager(key_prefix=DEFAULT_COOKIE_KEY_PREFIX, cache=get_default_cookie_cache())
-    redirect_manager = RedirectManager(key_prefix=DEFAULT_REDIRECT_KEY_PREFIX, cache=get_default_redirect_cache())
+    cache_manager = CacheManager(cache=get_default_cache())
+    cookie_manager = CookieManager(cache=get_default_cookie_cache())
+    redirect_manager = RedirectManager(cache=get_default_redirect_cache())
 
     # Convert to Request object
     request = Request(url, method='GET', **kwargs)

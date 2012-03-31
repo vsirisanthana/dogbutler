@@ -4,7 +4,8 @@ import re
 from urlparse import urlparse
 
 
-ORIGIN_KEY_PREFIX = 'origin'
+DEFAULT_COOKIE_KEY_PREFIX = 'cookie'
+ORIGIN_COOKIE_KEY_PREFIX = 'origin'
 
 
 def _make_cookie(cookie_headers):
@@ -52,7 +53,7 @@ def normalize_path(path):
 
 class CookieManager(object):
 
-    def __init__(self, key_prefix, cache):
+    def __init__(self, cache, key_prefix=DEFAULT_COOKIE_KEY_PREFIX):
         self.key_prefix = key_prefix
         self.cache = cache
 
@@ -83,10 +84,10 @@ class CookieManager(object):
         return '%s.%s' % (self.key_prefix, normalize_domain(domain))
 
     def get_origin_cookie_key(self, origin, path, name):
-        return '%s.%s.%s.%s.%s' % (self.key_prefix, ORIGIN_KEY_PREFIX, normalize_domain(origin), path, name)
+        return '%s.%s.%s.%s.%s' % (self.key_prefix, ORIGIN_COOKIE_KEY_PREFIX, normalize_domain(origin), path, name)
 
     def get_origin_cookie_lookup_key(self, origin):
-        return '%s.%s.%s' % (self.key_prefix, ORIGIN_KEY_PREFIX, normalize_domain(origin))
+        return '%s.%s.%s' % (self.key_prefix, ORIGIN_COOKIE_KEY_PREFIX, normalize_domain(origin))
 
     def get_cookies(self, url):
         """
