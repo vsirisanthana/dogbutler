@@ -1,12 +1,10 @@
 from datetime import datetime, timedelta
 
 from dummycache import cache as dummycache_cache
-from dummycache.cache import Cache
 from mock import patch
 from requests.models import Response
 
 from dogbutler import get
-from dogbutler.defaults import set_default_cache
 from dogbutler.tests.base import BaseTestCase
 
 
@@ -771,44 +769,3 @@ class TestApi(BaseTestCase):
 #        get('http://www.test.com/some_other_path/')
 #        mock_get.assert_called_with('http://www.test.com/some_other_path/', cookies={'name': 'value'})
 
-
-
-
-    def test_set_default_cache(self, mock_get):
-        response = Response()
-        response.status_code = 200
-        response._content = 'Mocked response content'
-        response.headers = {
-            'Cache-Control': 'max-age=100',
-        }
-        mock_get.return_value = response
-
-        C0 = self.cache
-        C1 = Cache()
-        C2 = Cache()
-
-        get('http://www.test.com/path')
-        self.assertEqual(mock_get.call_count, 1)
-        get('http://www.test.com/path')
-        self.assertEqual(mock_get.call_count, 1)
-
-        set_default_cache(C1)
-
-        get('http://www.test.com/path')
-        self.assertEqual(mock_get.call_count, 2)
-        get('http://www.test.com/path')
-        self.assertEqual(mock_get.call_count, 2)
-
-        set_default_cache(C2)
-
-        get('http://www.test.com/path')
-        self.assertEqual(mock_get.call_count, 3)
-        get('http://www.test.com/path')
-        self.assertEqual(mock_get.call_count, 3)
-
-        set_default_cache(C0)
-
-        get('http://www.test.com/path')
-        self.assertEqual(mock_get.call_count, 3)
-        get('http://www.test.com/path')
-        self.assertEqual(mock_get.call_count, 3)
