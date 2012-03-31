@@ -14,6 +14,9 @@ class RedirectManager(object):
         return '%s.%s' % (self.key_prefix, url)
 
     def process_request(self, request):
+        if self.cache is None:
+            return
+
         url = request.url
         history = []
         while True:
@@ -26,6 +29,9 @@ class RedirectManager(object):
         request.url = url
 
     def process_response(self, request, response):
+        if self.cache is None:
+            return
+
         if response.history:
             request.url = response.url
             for r in response.history:

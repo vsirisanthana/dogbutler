@@ -61,12 +61,18 @@ class CookieManager(object):
         """
         Set 'Cookie' header in request
         """
+        if self.cache is None:
+            return
+
         request.cookies = self.get_cookies(request.url)
 
     def process_response(self, request, response):
         """
         Process 'Set-Cookie' header in response
         """
+        if self.cache is None:
+            return
+
         if response and response.has_header('Set-Cookie'):
             origin = urlparse(response.url).netloc
             cookies = _make_cookie(response.headers['Set-Cookie'])
