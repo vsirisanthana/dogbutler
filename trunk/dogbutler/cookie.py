@@ -6,6 +6,7 @@ from urlparse import urlparse
 
 DEFAULT_COOKIE_KEY_PREFIX = 'cookie'
 ORIGIN_COOKIE_KEY_PREFIX = 'origin'
+DEFAULT_COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 10       # 10 years
 
 
 def _make_cookie(cookie_headers):
@@ -36,7 +37,7 @@ def get_max_age(cookie):
     # max-age has higher priority than  expires
     if cookie['max-age']:
         max_age = int(cookie['max-age'])
-    return max_age
+    return max_age if max_age is not None else DEFAULT_COOKIE_MAX_AGE
 
 def is_domain_valid(domain):
     if domain.endswith('.'):
@@ -178,7 +179,7 @@ class CookieManager(object):
 
         cookie_keys_set = self.cache.get(lookup_key) or set()
         cookie_keys_set.add(cookie_key)
-        self.cache.set(lookup_key, cookie_keys_set)
+        self.cache.set(lookup_key, cookie_keys_set, DEFAULT_COOKIE_MAX_AGE)
 
     def set_origin_cookie(self, origin, cookie):
         """
@@ -194,4 +195,4 @@ class CookieManager(object):
 
         cookie_keys_set = self.cache.get(lookup_key) or set()
         cookie_keys_set.add(cookie_key)
-        self.cache.set(lookup_key, cookie_keys_set)
+        self.cache.set(lookup_key, cookie_keys_set, DEFAULT_COOKIE_MAX_AGE)
