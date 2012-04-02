@@ -6,13 +6,13 @@ def read(fname):
 
 setup(
     name = "dogbutler",
-    version = "0.0.1",
+    version = "0.0.2",
     author = "The Sirisanthana Team",
     author_email = "vsirisanthana@gmail.com",
+    url = "http://code.google.com/p/dogbutler/",
     description = "Make HTTP/HTTPS requests with cache, cookie, and redirect support",
     long_description = read('README.txt'),
-    license = "GPL-3.0",
-    keywords = "HTTP HTTPS request python cache cookie redirect",
+    download_url = "http://pypi.python.org/pypi/dogbutler",
     classifiers = [
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
@@ -20,6 +20,8 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
         "License :: OSI Approved :: GNU General Public License (GPL)"
     ],
+    license = "GPL-3.0",
+    keywords = "HTTP HTTPS request python cache cookie redirect",
     packages = ['dogbutler', 'dogbutler.utils'],
     install_requires = ['dummycache', 'requests'],
 )
