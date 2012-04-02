@@ -2,6 +2,7 @@ from requests.exceptions import TooManyRedirects
 
 
 DEFAULT_REDIRECT_KEY_PREFIX = 'redirect'
+DEFAULT_REDIRECT_MAX_AGE = 60 * 60 * 24 * 365 * 10       # 10 years
 
 
 class RedirectManager(object):
@@ -38,4 +39,4 @@ class RedirectManager(object):
                 if r.status_code == 301:
                     #TODO: handle case of no Location header
                     redirect_to = r.headers.get('Location')
-                    self.cache.set(self.get_cache_key(r.url), redirect_to)
+                    self.cache.set(self.get_cache_key(r.url), redirect_to, DEFAULT_REDIRECT_MAX_AGE)
