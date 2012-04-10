@@ -8,8 +8,8 @@ LONG_TERM_CACHE_SECONDS = 60 * 60 * 24 * 365 * 10       # 10 years
 
 class CacheManager(object):
 
-    def __init__(self, cache, key_prefix=DEFAULT_CACHE_KEY_PREFIX, cache_anonymous_only=False):
-        self.key_prefix = key_prefix
+    def __init__(self, cache, key_prefix='', cache_anonymous_only=False):
+        self.key_prefix = '.'.join([key_prefix, DEFAULT_CACHE_KEY_PREFIX])
         self.cache = cache
         self.cache_anonymous_only = cache_anonymous_only
 
