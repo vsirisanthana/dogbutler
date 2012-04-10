@@ -66,3 +66,86 @@ class TestSessions(BaseTestCase):
         self.assertEqual(mock_request.call_count, 4)
         s1.get('http://www.test.com/path')
         self.assertEqual(mock_request.call_count, 4)
+
+    def test_cookie(self, mock_request):
+        """
+        Test that each session has its own cookie "sandbox".
+        """
+        response = Response()
+        response.status_code = 200
+        response._content = 'Mocked response content'
+        response.headers = {'Set-Cookie': 'name=value'}
+        response.url = 'http://www.test.com/path'
+
+        mock_request.return_value = response
+
+        s0 = Session()
+        s1 = Session()
+
+        # s0 make requests
+        s0.get('http://www.test.com/path')
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
+        s0.get('http://www.test.com/path')
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True, cookies={'name': 'value'})
+
+        # s1 make requests
+        s1.get('http://www.test.com/path')
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
+        s1.get('http://www.test.com/path')
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True, cookies={'name': 'value'})
+
+        # s0 make requests again
+        s0.get('http://www.test.com/path')
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True, cookies={'name': 'value'})
+        s0.get('http://www.test.com/path')
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True, cookies={'name': 'value'})
+
+    def test_redirect(self, mock_request):
+        """
+        Test that each session has its own redirect "sandbox".
+        """
+        response0 = Response()
+        response0.url = 'http://www.test.com/neverseemeagain'
+        response0.status_code = 301
+        response0.headers = {'Location': 'http://www.test.com/redirect_1'}
+
+        response1 = Response()
+        response1.url = 'http://www.test.com/redirect_1'
+        response1.status_code = 301
+        response1.headers = {'Location': 'http://www.test.com/redirect_2'}
+
+        response2 = Response()
+        response2.url = 'http://www.test.com/redirect_2'
+        response2.status_code = 301
+        response2.headers = {'Location': 'http://www.test.com/redirect_3'}
+
+        response3 = Response()
+        response3.url = 'http://www.test.com/redirect_3'
+        response3.status_code = 200
+        response3._content = 'Mocked response content'
+        response3.history = [response0, response1, response2]
+
+        mock_request.return_value = response3
+
+        s0 = Session()
+        s1 = Session()
+
+        # s0 make a request
+        r = s0.get('http://www.test.com/neverseemeagain')
+        mock_request.assert_called_with('GET', 'http://www.test.com/neverseemeagain', allow_redirects=True)
+        self.assertEqual(r.status_code, 200)
+
+        # s0 make a request again. Assert we not make request to 301 again.
+        r = s0.get('http://www.test.com/neverseemeagain')
+        mock_request.assert_called_with('GET', 'http://www.test.com/redirect_3', allow_redirects=True)
+        self.assertEqual(r.status_code, 200)
+
+        # s1 make a request
+        r = s1.get('http://www.test.com/neverseemeagain')
+        mock_request.assert_called_with('GET', 'http://www.test.com/neverseemeagain', allow_redirects=True)
+        self.assertEqual(r.status_code, 200)
+
+        # s1 make a request again. Assert we not make request to 301 again.
+        r = s1.get('http://www.test.com/neverseemeagain')
+        mock_request.assert_called_with('GET', 'http://www.test.com/redirect_3', allow_redirects=True)
+        self.assertEqual(r.status_code, 200)
