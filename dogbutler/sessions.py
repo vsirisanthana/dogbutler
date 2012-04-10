@@ -5,9 +5,14 @@ from .cookie import CookieManager
 from .defaults import get_default_cache, get_default_cookie_cache, get_default_redirect_cache
 from .models import Request
 from .redirect import RedirectManager
+from .utils.rand import random_string
 
 
 class Session(requests_Session):
+
+    def __init__(self, **kwargs):
+        self.key_prefix = kwargs.pop('key_prefix') if 'key_prefix' in kwargs else random_string(64)
+        super(Session, self).__init__(**kwargs)
 
     def request(self, method, url, queue=None, **kwargs):
 
@@ -15,9 +20,9 @@ class Session(requests_Session):
         if method == 'GET':
 
             # Create managers
-            cache_manager = CacheManager(cache=get_default_cache())
-            cookie_manager = CookieManager(cache=get_default_cookie_cache())
-            redirect_manager = RedirectManager(cache=get_default_redirect_cache())
+            cache_manager = CacheManager(cache=get_default_cache(), key_prefix=self.key_prefix)
+            cookie_manager = CookieManager(cache=get_default_cookie_cache(), key_prefix=self.key_prefix)
+            redirect_manager = RedirectManager(cache=get_default_redirect_cache(), key_prefix=self.key_prefix)
 
             # Convert to Request object
             request = Request(url, method=method, **kwargs)
