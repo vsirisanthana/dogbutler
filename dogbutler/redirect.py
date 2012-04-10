@@ -7,12 +7,12 @@ DEFAULT_REDIRECT_MAX_AGE = 60 * 60 * 24 * 365 * 10       # 10 years
 
 class RedirectManager(object):
 
-    def __init__(self, cache, key_prefix=DEFAULT_REDIRECT_KEY_PREFIX):
-        self.key_prefix = key_prefix
+    def __init__(self, cache, key_prefix=''):
+        self.key_prefix = '.'.join([key_prefix, DEFAULT_REDIRECT_KEY_PREFIX])
         self.cache = cache
 
     def get_cache_key(self, url):
-        return '%s.%s' % (self.key_prefix, url)
+        return '.'.join([self.key_prefix, url])
 
     def process_request(self, request):
         if self.cache is None:

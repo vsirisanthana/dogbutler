@@ -54,8 +54,8 @@ def normalize_path(path):
 
 class CookieManager(object):
 
-    def __init__(self, cache, key_prefix=DEFAULT_COOKIE_KEY_PREFIX):
-        self.key_prefix = key_prefix
+    def __init__(self, cache, key_prefix=''):
+        self.key_prefix = '.'.join([key_prefix, DEFAULT_COOKIE_KEY_PREFIX])
         self.cache = cache
 
     def process_request(self, request):
@@ -85,16 +85,16 @@ class CookieManager(object):
                     self.set_domain_cookie(cookie)
 
     def get_domain_cookie_key(self, domain, path, name):
-        return '%s.%s.%s.%s' % (self.key_prefix, normalize_domain(domain), path, name)
+        return '.'.join([self.key_prefix, normalize_domain(domain), path, name])
 
     def get_domain_cookie_lookup_key(self, domain):
-        return '%s.%s' % (self.key_prefix, normalize_domain(domain))
+        return '.'.join([self.key_prefix, normalize_domain(domain)])
 
     def get_origin_cookie_key(self, origin, path, name):
-        return '%s.%s.%s.%s.%s' % (self.key_prefix, ORIGIN_COOKIE_KEY_PREFIX, normalize_domain(origin), path, name)
+        return '.'.join([self.key_prefix, ORIGIN_COOKIE_KEY_PREFIX, normalize_domain(origin), path, name])
 
     def get_origin_cookie_lookup_key(self, origin):
-        return '%s.%s.%s' % (self.key_prefix, ORIGIN_COOKIE_KEY_PREFIX, normalize_domain(origin))
+        return '.'.join([self.key_prefix, ORIGIN_COOKIE_KEY_PREFIX, normalize_domain(origin)])
 
     def get_cookies(self, url):
         """
