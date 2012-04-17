@@ -1,4 +1,5 @@
-from dogbutler.utils.cache import get_cache_key, learn_cache_key, get_max_age
+import copy
+from dogbutler.utils.cache import get_cache_key, learn_cache_key, get_max_age, remove_hop_by_hop_headers
 
 
 DEFAULT_CACHE_KEY_PREFIX = 'dogbutler'
@@ -130,9 +131,11 @@ class CacheManager(object):
             return response
 #        patch_response_headers(response, timeout)
         if timeout:
-            cache_key = learn_cache_key(request, response, timeout, self.key_prefix, cache=self.cache)
-            long_term_cache_key = learn_cache_key(request, response, LONG_TERM_CACHE_SECONDS, LONG_TERM_CACHE_KEY_PREFIX+self.key_prefix, cache=self.cache)
-            if hasattr(response, 'render') and callable(response.render):
+            # ignore hop-by-hop headers, they must not be stored by caches
+            cached_response = remove_hop_by_hop_headers(copy.deepcopy(response))
+            cache_key = learn_cache_key(request, cached_response, timeout, self.key_prefix, cache=self.cache)
+            long_term_cache_key = learn_cache_key(request, cached_response, LONG_TERM_CACHE_SECONDS, LONG_TERM_CACHE_KEY_PREFIX+self.key_prefix, cache=self.cache)
+            if hasattr(cached_response, 'render') and callable(cached_response.render):
 
                 # TODO: Investigate 'post_render_callback'
                 def post_render_callback(r):
@@ -141,6 +144,6 @@ class CacheManager(object):
 
                 response.add_post_render_callback(post_render_callback)
             else:
-                self.cache.set(cache_key, response, timeout)
-                self.cache.set(long_term_cache_key, response, LONG_TERM_CACHE_SECONDS)
+                self.cache.set(cache_key, cached_response, timeout)
+                self.cache.set(long_term_cache_key, cached_response, LONG_TERM_CACHE_SECONDS)
         return response

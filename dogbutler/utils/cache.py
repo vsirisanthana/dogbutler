@@ -24,6 +24,11 @@ from .hashcompat import md5_constructor
 
 cc_delim_re = re.compile(r'\s*,\s*')
 
+_hop_headers = {
+    'connection':1, 'keep-alive':1, 'proxy-authenticate':1,
+    'proxy-authorization':1, 'te':1, 'trailers':1, 'transfer-encoding':1,
+    'upgrade':1
+}
 
 def get_max_age(response):
     """
@@ -128,3 +133,10 @@ def _to_tuple(s):
     if len(t) == 2:
         return t[0].lower(), t[1]
     return t[0].lower(), True
+
+
+def remove_hop_by_hop_headers(response):
+    for hop_header in _hop_headers.keys():
+        if response.has_header(hop_header):
+            response.headers.pop(hop_header)
+    return response
