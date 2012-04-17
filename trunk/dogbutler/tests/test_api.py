@@ -770,6 +770,31 @@ class TestApi(BaseTestCase):
 #        mock_request.assert_called_with('http://www.test.com/some_other_path/', cookies={'name': 'value'})
 
 
+    def test_user_defined_cookie(self, mock_request):
+        """
+        Test that user-define cookie should take precedence over auto cookie
+        """
+        response = Response()
+        response.headers = {'Set-Cookie': 'a=apple;, b=banana; max-age=20'}
+        response.url = 'http://www.test.com/path'
+        mock_request.return_value = response
+
+        get('http://www.test.com/path')
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
+
+        # Test that user-defined cookie is not ignored
+        get('http://www.test.com/path', cookies={'c': 'citrus'})
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True,
+            cookies={'a': 'apple', 'b': 'banana', 'c': 'citrus'}
+        )
+
+        # Test that user-defined cookie has higher precedence
+        get('http://www.test.com/path', cookies={'a': 'anchovies'})
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True,
+            cookies={'a': 'anchovies', 'b': 'banana'}
+        )
+
+
     def test_not_cache_hop_by_hop_headers(self, mock_get):
         """
         Test hop-by-hop headers are not cached
