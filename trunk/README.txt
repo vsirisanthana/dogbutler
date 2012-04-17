@@ -1,8 +1,8 @@
 ====================
- READ ME, READ ME!!
+ READ ME
 ====================
 
-all the interesting & useful info goes here!!!
+Dogbutler is a client library base on requests but with a cache and persistent cookie support.
 
 ====================
     INSTALLATION
@@ -21,6 +21,11 @@ all the interesting & useful info goes here!!!
 ====================
      CHANGE LOG
 ====================
+Version 0.0.3
+--------------------
+- Support Sessions.
+- Not cache hop-by-hop headers
+
 Version 0.0.2
 --------------------
 - Set default cache, cookie cache, and redirect cache backends.

@@ -769,3 +769,90 @@ class TestApi(BaseTestCase):
 #        get('http://www.test.com/some_other_path/')
 #        mock_request.assert_called_with('http://www.test.com/some_other_path/', cookies={'name': 'value'})
 
+
+    def test_not_cache_hop_by_hop_headers(self, mock_get):
+        """
+        Test hop-by-hop headers are not cached
+        """
+        response = Response()
+        response.status_code = 200
+        response._content = 'Mocked response content'
+        response.headers = {
+            'Cache-Control': 'max-age=10',
+            'euam': 'hello',
+            'connection': 'abc',
+            'keep-alive': '1',
+            'proxy-authenticate': 'somehthing',
+            'proxy-authorization': 'yo',
+            'te': 'yeah',
+            'trailers': 3,
+            'transfer-encoding': 'text',
+            'upgrade': 'true'
+            }
+        mock_get.return_value = response
+
+        # assert that first time we get the response still have all of the hop-by-hop headers
+        result = get('http://www.test.com/path/1')
+        self.assertEqual(mock_get.call_count, 1)
+        self.assertIn('connection', result.headers)
+        self.assertIn('keep-alive', result.headers)
+        self.assertIn('proxy-authenticate', result.headers)
+        self.assertIn('proxy-authorization', result.headers)
+        self.assertIn('te', result.headers)
+        self.assertIn('trailers', result.headers)
+        self.assertIn('transfer-encoding', result.headers)
+        self.assertIn('upgrade', result.headers)
+
+        # should not get hop-by-hop headers when get from cache
+        result = get('http://www.test.com/path/1')
+        self.assertEqual(mock_get.call_count, 1)
+        self.assertNotIn('connection', result.headers)
+        self.assertNotIn('keep-alive', result.headers)
+        self.assertNotIn('proxy-authenticate', result.headers)
+        self.assertNotIn('proxy-authorization', result.headers)
+        self.assertNotIn('te', result.headers)
+        self.assertNotIn('trailers', result.headers)
+        self.assertNotIn('transfer-encoding', result.headers)
+        self.assertNotIn('upgrade', result.headers)
+
+
+    def test_return_hop_headers_if_not_return_from_cache(self, mock_get):
+        """
+        Test hop-by-hop headers are not cached
+        """
+        response = Response()
+        response.status_code = 200
+        response._content = 'Mocked response content'
+        response.headers = {
+            'connection': 'abc',
+            'keep-alive': '1',
+            'proxy-authenticate': 'somehthing',
+            'proxy-authorization': 'yo',
+            'te': 'yeah',
+            'trailers': 3,
+            'transfer-encoding': 'text',
+            'upgrade': 'true'
+        }
+        mock_get.return_value = response
+
+        result = get('http://www.test.com/path/1')
+        self.assertEqual(mock_get.call_count, 1)
+        self.assertIn('connection', result.headers)
+        self.assertIn('keep-alive', result.headers)
+        self.assertIn('proxy-authenticate', result.headers)
+        self.assertIn('proxy-authorization', result.headers)
+        self.assertIn('te', result.headers)
+        self.assertIn('trailers', result.headers)
+        self.assertIn('transfer-encoding', result.headers)
+        self.assertIn('upgrade', result.headers)
+
+        result = get('http://www.test.com/path/1')
+        self.assertEqual(mock_get.call_count, 2)
+        self.assertIn('connection', result.headers)
+        self.assertIn('keep-alive', result.headers)
+        self.assertIn('proxy-authenticate', result.headers)
+        self.assertIn('proxy-authorization', result.headers)
+        self.assertIn('te', result.headers)
+        self.assertIn('trailers', result.headers)
+        self.assertIn('transfer-encoding', result.headers)
+        self.assertIn('upgrade', result.headers)
