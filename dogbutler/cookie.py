@@ -65,7 +65,8 @@ class CookieManager(object):
         if self.cache is None:
             return
 
-        request.cookies = self.get_cookies(request.url)
+        for key, value in self.get_cookies(request.url).items():
+            request.cookies.setdefault(key, value)
 
     def process_response(self, request, response):
         """
