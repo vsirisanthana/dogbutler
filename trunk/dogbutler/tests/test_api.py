@@ -881,3 +881,24 @@ class TestApi(BaseTestCase):
         self.assertIn('trailers', result.headers)
         self.assertIn('transfer-encoding', result.headers)
         self.assertIn('upgrade', result.headers)
+
+
+    def test_not_return_cached_value_if_request_said_no_cache(self, mock_get):
+        response = Response()
+        response.status_code = 200
+        response._content = 'Mocked response content'
+        response.headers = {
+            'Cache-Control': 'max-age=10',
+            'hello': 'world'
+        }
+        mock_get.return_value = response
+
+        result = get('http://www.test.com/path/1', headers={'Cache-Control': 'no-cache'})
+        self.assertEqual(mock_get.call_count, 1)
+        result = get('http://www.test.com/path/1')
+        self.assertEqual(mock_get.call_count, 1)
+        result = get('http://www.test.com/path/1', headers={'Cache-Control': 'no-cache'})
+        self.assertEqual(mock_get.call_count, 2)
+        result = get('http://www.test.com/path/1', headers={'Cache-Control': 'no-cache'})
+        self.assertEqual(mock_get.call_count, 3)
+
