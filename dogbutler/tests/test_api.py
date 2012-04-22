@@ -9,9 +9,15 @@ from dogbutler.tests.base import BaseTestCase
 
 
 @patch('requests.sessions.Session.request')
-class TestApi(BaseTestCase):
+class TestClientSideCache(BaseTestCase):
+    """
+    Test client-side caching mechanism
+    """
 
     def test_get_max_age(self, mock_request):
+        """
+        Test that GET requests are cached according to 'max-age' value
+        """
         response = Response()
         response.status_code = 200
         response._content = 'Mocked response content'
@@ -32,6 +38,9 @@ class TestApi(BaseTestCase):
         self.assertEqual(mock_request.call_count, 2)
 
     def test_get_different_urls(self, mock_request):
+        """
+        Test that different URLs are cached separately
+        """
         response = Response()
         response.status_code = 200
         response._content = 'Mocked response content'
@@ -52,6 +61,9 @@ class TestApi(BaseTestCase):
         self.assertEqual(mock_request.call_count, 3)
 
     def test_get_different_queries(self, mock_request):
+        """
+        Test that URLs with same path but different queries are cached separately
+        """
         response = Response()
         response.status_code = 200
         response._content = 'Mocked response content'
@@ -72,6 +84,9 @@ class TestApi(BaseTestCase):
         self.assertEqual(mock_request.call_count, 3)
 
     def test_get_different_fragments(self, mock_request):
+        """
+        Test that URLs with same path but different fragments are cached separately
+        """
         response = Response()
         response.status_code = 200
         response._content = 'Mocked response content'
@@ -92,6 +107,9 @@ class TestApi(BaseTestCase):
         self.assertEqual(mock_request.call_count, 3)
 
     def test_get_vary_on_accept(self, mock_request):
+        """
+        Test that GET requests are cached separately according to the 'Vary' header
+        """
         response = Response()
         response.status_code = 200
         response._content = 'Mocked response content'
@@ -113,6 +131,9 @@ class TestApi(BaseTestCase):
         self.assertEqual(mock_request.call_count, 4)
 
     def test_get_no_cache_control_header(self, mock_request):
+        """
+        Test that GET requests are not cached if there's no 'Cache-Control' header
+        """
         response = Response()
         response.status_code = 200
         response._content = 'Mocked response content'
@@ -148,6 +169,9 @@ class TestApi(BaseTestCase):
         self.assertEqual(mock_request.call_count, 3)
 
     def test_get_cache_control_no_cache_empty_field(self, mock_request):
+        """
+        Test that GET requests are not cached if 'no-cache' is empty
+        """
         response = Response()
         response.status_code = 200
         response._content = 'Mocked response content'
@@ -165,6 +189,9 @@ class TestApi(BaseTestCase):
         self.assertEqual(mock_request.call_count, 3)
 
     def test_get_cache_201(self, mock_request):
+        """
+        Test that 201 GET responses are cached
+        """
         response = Response()
         response.status_code = 201
         response._content = 'Mocked response content'
@@ -182,6 +209,9 @@ class TestApi(BaseTestCase):
         self.assertEqual(response.status_code, 201)
 
     def test_get_cache_204(self, mock_request):
+        """
+        Test that 204 GET responses are cached
+        """
         response = Response()
         response.status_code = 204
         response._content = 'Mocked response content'
@@ -199,6 +229,9 @@ class TestApi(BaseTestCase):
         self.assertEqual(response.status_code, 204)
 
     def test_get_cache_400(self, mock_request):
+        """
+        Test that 400 GET responses are cached
+        """
         response = Response()
         response.status_code = 400
         response._content = 'Mocked response content'
@@ -216,6 +249,9 @@ class TestApi(BaseTestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_get_cache_401(self, mock_request):
+        """
+        Test that 401 GET responses are cached
+        """
         response = Response()
         response.status_code = 401
         response._content = 'Mocked response content'
@@ -233,6 +269,9 @@ class TestApi(BaseTestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_get_cache_403(self, mock_request):
+        """
+        Test that 403 GET responses are cached
+        """
         response = Response()
         response.status_code = 403
         response._content = 'Mocked response content'
@@ -250,6 +289,9 @@ class TestApi(BaseTestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_get_cache_404(self, mock_request):
+        """
+        Test that 404 GET responses are cached
+        """
         response = Response()
         response.status_code = 404
         response._content = 'Mocked response content'
@@ -265,6 +307,336 @@ class TestApi(BaseTestCase):
         response = get('http://www.test.com/path')
         self.assertEqual(mock_request.call_count, 1)
         self.assertEqual(response.status_code, 404)
+
+    def test_not_return_cached_value_if_request_said_no_cache(self, mock_get):
+        response = Response()
+        response.status_code = 200
+        response._content = 'Mocked response content'
+        response.headers = {
+            'Cache-Control': 'max-age=10',
+            'hello': 'world'
+        }
+        mock_get.return_value = response
+
+        result = get('http://www.test.com/path/1', headers={'Cache-Control': 'no-cache'})
+        self.assertEqual(mock_get.call_count, 1)
+        result = get('http://www.test.com/path/1')
+        self.assertEqual(mock_get.call_count, 1)
+        result = get('http://www.test.com/path/1', headers={'Cache-Control': 'no-cache'})
+        self.assertEqual(mock_get.call_count, 2)
+        result = get('http://www.test.com/path/1', headers={'Cache-Control': 'no-cache'})
+        self.assertEqual(mock_get.call_count, 3)
+
+    def test_not_cache_hop_by_hop_headers(self, mock_get):
+        """
+        Test hop-by-hop headers are not cached
+        """
+        response = Response()
+        response.status_code = 200
+        response._content = 'Mocked response content'
+        response.headers = {
+            'Cache-Control': 'max-age=10',
+            'euam': 'hello',
+            'connection': 'abc',
+            'keep-alive': '1',
+            'proxy-authenticate': 'somehthing',
+            'proxy-authorization': 'yo',
+            'te': 'yeah',
+            'trailers': 3,
+            'transfer-encoding': 'text',
+            'upgrade': 'true'
+        }
+        mock_get.return_value = response
+
+        # assert that first time we get the response still have all of the hop-by-hop headers
+        result = get('http://www.test.com/path/1')
+        self.assertEqual(mock_get.call_count, 1)
+        self.assertIn('connection', result.headers)
+        self.assertIn('keep-alive', result.headers)
+        self.assertIn('proxy-authenticate', result.headers)
+        self.assertIn('proxy-authorization', result.headers)
+        self.assertIn('te', result.headers)
+        self.assertIn('trailers', result.headers)
+        self.assertIn('transfer-encoding', result.headers)
+        self.assertIn('upgrade', result.headers)
+
+        # should not get hop-by-hop headers when get from cache
+        result = get('http://www.test.com/path/1')
+        self.assertEqual(mock_get.call_count, 1)
+        self.assertNotIn('connection', result.headers)
+        self.assertNotIn('keep-alive', result.headers)
+        self.assertNotIn('proxy-authenticate', result.headers)
+        self.assertNotIn('proxy-authorization', result.headers)
+        self.assertNotIn('te', result.headers)
+        self.assertNotIn('trailers', result.headers)
+        self.assertNotIn('transfer-encoding', result.headers)
+        self.assertNotIn('upgrade', result.headers)
+
+    def test_return_hop_headers_if_not_return_from_cache(self, mock_get):
+        """
+        Test hop-by-hop headers are not cached
+        """
+        response = Response()
+        response.status_code = 200
+        response._content = 'Mocked response content'
+        response.headers = {
+            'connection': 'abc',
+            'keep-alive': '1',
+            'proxy-authenticate': 'somehthing',
+            'proxy-authorization': 'yo',
+            'te': 'yeah',
+            'trailers': 3,
+            'transfer-encoding': 'text',
+            'upgrade': 'true'
+        }
+        mock_get.return_value = response
+
+        result = get('http://www.test.com/path/1')
+        self.assertEqual(mock_get.call_count, 1)
+        self.assertIn('connection', result.headers)
+        self.assertIn('keep-alive', result.headers)
+        self.assertIn('proxy-authenticate', result.headers)
+        self.assertIn('proxy-authorization', result.headers)
+        self.assertIn('te', result.headers)
+        self.assertIn('trailers', result.headers)
+        self.assertIn('transfer-encoding', result.headers)
+        self.assertIn('upgrade', result.headers)
+
+        result = get('http://www.test.com/path/1')
+        self.assertEqual(mock_get.call_count, 2)
+        self.assertIn('connection', result.headers)
+        self.assertIn('keep-alive', result.headers)
+        self.assertIn('proxy-authenticate', result.headers)
+        self.assertIn('proxy-authorization', result.headers)
+        self.assertIn('te', result.headers)
+        self.assertIn('trailers', result.headers)
+        self.assertIn('transfer-encoding', result.headers)
+        self.assertIn('upgrade', result.headers)
+
+
+@patch('requests.sessions.Session.request')
+class TestServerSideCache(BaseTestCase):
+    """
+    Test server-side caching mechanism
+    """
+
+    def test_get_if_modified_since_header(self, mock_request):
+        response = Response()
+        response.status_code = 200
+        response._content = 'Mocked response content'
+        response.headers = {
+            'Cache-Control': 'max-age=1',
+            'Last-Modified': 'Tue, 28 Feb 2012 15:50:14 GMT',
+            }
+        mock_request.return_value = response
+
+        get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 1)
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
+
+        # Move time forward 1 second
+        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=1)
+
+        get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 2)
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', headers={'If-Modified-Since': 'Tue, 28 Feb 2012 15:50:14 GMT'}, allow_redirects=True)
+
+    def test_get_if_modified_since_header_not_overridden(self, mock_request):
+        response = Response()
+        response.status_code = 200
+        response._content = 'Mocked response content'
+        response.headers = {
+            'Cache-Control': 'max-age=1',
+            'Last-Modified': 'Tue, 28 Feb 2012 15:50:14 GMT',
+            }
+        mock_request.return_value = response
+
+        get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 1)
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
+
+        # Move time forward 1 second
+        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=1)
+
+        get('http://www.test.com/path', headers={'If-Modified-Since': '2011-01-11 00:00:00.000000'})
+        self.assertEqual(mock_request.call_count, 2)
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', headers={'If-Modified-Since': '2011-01-11 00:00:00.000000'}, allow_redirects=True)
+
+    def test_get_if_modified_since_header_no_cache(self, mock_request):
+        response = Response()
+        response.status_code = 200
+        response._content = 'Mocked response content'
+        response.headers = {
+            'Cache-Control': 'max-age=0',
+            'Last-Modified': 'Tue, 28 Feb 2012 15:50:14 GMT',
+            }
+        mock_request.return_value = response
+
+        get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 1)
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
+
+        get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 2)
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
+
+        get('http://www.test.com/path', headers={'If-Modified-Since': 'Sun, 01 Jan 2012 00:00:00 GMT'})
+        self.assertEqual(mock_request.call_count, 3)
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', headers={'If-Modified-Since': 'Sun, 01 Jan 2012 00:00:00 GMT'}, allow_redirects=True)
+
+    def test_get_if_none_match_header(self, mock_request):
+        response = Response()
+        response.status_code = 200
+        response._content = 'Mocked response content'
+        response.headers = {
+            'Cache-Control': 'max-age=1',
+            'ETag': '"fdcd6016cf6059cbbf418d66a51a6b0a"',
+            }
+        mock_request.return_value = response
+
+        get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 1)
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
+
+        # Move time forward 1 second
+        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=1)
+
+        get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 2)
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', headers={'If-None-Match': '"fdcd6016cf6059cbbf418d66a51a6b0a"'}, allow_redirects=True)
+
+    def test_get_if_none_match_header_not_overridden(self, mock_request):
+        response = Response()
+        response.status_code = 200
+        response._content = 'Mocked response content'
+        response.headers = {
+            'Cache-Control': 'max-age=1',
+            'ETag': '"fdcd6016cf6059cbbf418d66a51a6b0a"',
+            }
+        mock_request.return_value = response
+
+        get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 1)
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
+
+        # Move time forward 1 second
+        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=1)
+
+        get('http://www.test.com/path', headers={'If-None-Match': '"ffffffffffffffffffffffffffffffff"'})
+        self.assertEqual(mock_request.call_count, 2)
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', headers={'If-None-Match': '"ffffffffffffffffffffffffffffffff"'}, allow_redirects=True)
+
+    def test_get_if_modified_since_header_no_cache(self, mock_request):
+        response = Response()
+        response.status_code = 200
+        response._content = 'Mocked response content'
+        response.headers = {
+            'Cache-Control': 'no-cache',
+            'ETag': '"fdcd6016cf6059cbbf418d66a51a6b0a"',
+            }
+        mock_request.return_value = response
+
+        get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 1)
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
+
+        get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 2)
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
+
+        get('http://www.test.com/path', headers={'If-None-Match': '"ffffffffffffffffffffffffffffffff"'})
+        self.assertEqual(mock_request.call_count, 3)
+        mock_request.assert_called_with('GET', 'http://www.test.com/path', headers={'If-None-Match': '"ffffffffffffffffffffffffffffffff"'}, allow_redirects=True)
+
+    def test_get_304(self, mock_request):
+        response0 = Response()
+        response0.status_code = 200
+        response0._content = 'Mocked response content'
+        response0.headers = {
+            'Cache-Control': 'max-age=1',
+            'ETag': '"fdcd6016cf6059cbbf418d66a51a6b0a"',
+            }
+
+        response1 = Response()
+        response1.status_code = 304
+        response1._content = ''
+        response1.headers = {
+            'Cache-Control': 'max-age=2',
+            }
+        mock_request.side_effect = [response0, response1, response1, response1]
+
+        get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 1)
+
+        # Move time forward 1 second
+        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=1)
+
+        r = get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 2)
+        self.assertEqual(r.status_code, 304)
+        self.assertEqual(r.content, 'Mocked response content')
+        self.assertEqual(r.headers['Cache-Control'], 'max-age=2')
+
+        r = get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 2)
+        self.assertEqual(r.status_code, 304)
+        self.assertEqual(r.content, 'Mocked response content')
+
+        # Move time forward 3 seconds (1 + 2)
+        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=3)
+
+        r = get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 3)
+        self.assertEqual(r.status_code, 304)
+        self.assertEqual(r.content, 'Mocked response content')
+        self.assertEqual(r.headers['Cache-Control'], 'max-age=2')
+
+    def test_get_304_cache_not_exist(self, mock_request):
+        response0 = Response()
+        response0.status_code = 200
+        response0._content = 'Mocked response content X'
+        response0.headers = {
+            'Cache-Control': 'max-age=10',
+            'ETag': '"fdcd6016cf6059cbbf418d66a51a6b0a"',
+            }
+
+        response1 = Response()
+        response1.status_code = 304
+        response1._content = ''
+        response1.headers = {
+            'Cache-Control': 'max-age=10',
+            }
+
+        response2 = Response()
+        response2.status_code = 200
+        response2._content = 'Mocked response content Y'
+        response2.headers = {
+            'Cache-Control': 'max-age=10',
+            'ETag': '"a0b6a15a66d814fbbc9506fc6106dcdf"',
+            }
+
+        mock_request.side_effect = [response0, response1, response2]
+
+        r = get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 1)
+        self.assertEqual(r.content, 'Mocked response content X')
+
+        self.cache.clear()
+
+        r = get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 3)
+        self.assertEqual(r.content, 'Mocked response content Y')
+
+        r = get('http://www.test.com/path')
+        self.assertEqual(mock_request.call_count, 3)
+        self.assertEqual(r.content, 'Mocked response content Y')
+
+
+@patch('requests.sessions.Session.request')
+class TestRedirect(BaseTestCase):
+    """
+    Test redirect mechanism
+    """
 
     def test_get_301_only_once(self, mock_request):
         response0 = Response()
@@ -457,216 +829,12 @@ class TestApi(BaseTestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.content, 'Mocked response content')
 
-    def test_get_if_modified_since_header(self, mock_request):
-        response = Response()
-        response.status_code = 200
-        response._content = 'Mocked response content'
-        response.headers = {
-            'Cache-Control': 'max-age=1',
-            'Last-Modified': 'Tue, 28 Feb 2012 15:50:14 GMT',
-            }
-        mock_request.return_value = response
 
-        get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 1)
-        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
-
-        # Move time forward 1 second
-        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=1)
-
-        get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 2)
-        mock_request.assert_called_with('GET', 'http://www.test.com/path', headers={'If-Modified-Since': 'Tue, 28 Feb 2012 15:50:14 GMT'}, allow_redirects=True)
-
-    def test_get_if_modified_since_header_not_overridden(self, mock_request):
-        response = Response()
-        response.status_code = 200
-        response._content = 'Mocked response content'
-        response.headers = {
-            'Cache-Control': 'max-age=1',
-            'Last-Modified': 'Tue, 28 Feb 2012 15:50:14 GMT',
-            }
-        mock_request.return_value = response
-
-        get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 1)
-        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
-
-        # Move time forward 1 second
-        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=1)
-
-        get('http://www.test.com/path', headers={'If-Modified-Since': '2011-01-11 00:00:00.000000'})
-        self.assertEqual(mock_request.call_count, 2)
-        mock_request.assert_called_with('GET', 'http://www.test.com/path', headers={'If-Modified-Since': '2011-01-11 00:00:00.000000'}, allow_redirects=True)
-
-    def test_get_if_modified_since_header_no_cache(self, mock_request):
-        response = Response()
-        response.status_code = 200
-        response._content = 'Mocked response content'
-        response.headers = {
-            'Cache-Control': 'max-age=0',
-            'Last-Modified': 'Tue, 28 Feb 2012 15:50:14 GMT',
-            }
-        mock_request.return_value = response
-
-        get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 1)
-        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
-
-        get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 2)
-        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
-
-        get('http://www.test.com/path', headers={'If-Modified-Since': 'Sun, 01 Jan 2012 00:00:00 GMT'})
-        self.assertEqual(mock_request.call_count, 3)
-        mock_request.assert_called_with('GET', 'http://www.test.com/path', headers={'If-Modified-Since': 'Sun, 01 Jan 2012 00:00:00 GMT'}, allow_redirects=True)
-
-    def test_get_if_none_match_header(self, mock_request):
-        response = Response()
-        response.status_code = 200
-        response._content = 'Mocked response content'
-        response.headers = {
-            'Cache-Control': 'max-age=1',
-            'ETag': '"fdcd6016cf6059cbbf418d66a51a6b0a"',
-        }
-        mock_request.return_value = response
-
-        get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 1)
-        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
-
-        # Move time forward 1 second
-        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=1)
-
-        get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 2)
-        mock_request.assert_called_with('GET', 'http://www.test.com/path', headers={'If-None-Match': '"fdcd6016cf6059cbbf418d66a51a6b0a"'}, allow_redirects=True)
-
-    def test_get_if_none_match_header_not_overridden(self, mock_request):
-        response = Response()
-        response.status_code = 200
-        response._content = 'Mocked response content'
-        response.headers = {
-            'Cache-Control': 'max-age=1',
-            'ETag': '"fdcd6016cf6059cbbf418d66a51a6b0a"',
-        }
-        mock_request.return_value = response
-
-        get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 1)
-        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
-
-        # Move time forward 1 second
-        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=1)
-
-        get('http://www.test.com/path', headers={'If-None-Match': '"ffffffffffffffffffffffffffffffff"'})
-        self.assertEqual(mock_request.call_count, 2)
-        mock_request.assert_called_with('GET', 'http://www.test.com/path', headers={'If-None-Match': '"ffffffffffffffffffffffffffffffff"'}, allow_redirects=True)
-
-    def test_get_if_modified_since_header_no_cache(self, mock_request):
-        response = Response()
-        response.status_code = 200
-        response._content = 'Mocked response content'
-        response.headers = {
-            'Cache-Control': 'no-cache',
-            'ETag': '"fdcd6016cf6059cbbf418d66a51a6b0a"',
-        }
-        mock_request.return_value = response
-
-        get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 1)
-        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
-
-        get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 2)
-        mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True)
-
-        get('http://www.test.com/path', headers={'If-None-Match': '"ffffffffffffffffffffffffffffffff"'})
-        self.assertEqual(mock_request.call_count, 3)
-        mock_request.assert_called_with('GET', 'http://www.test.com/path', headers={'If-None-Match': '"ffffffffffffffffffffffffffffffff"'}, allow_redirects=True)
-
-    def test_get_304(self, mock_request):
-        response0 = Response()
-        response0.status_code = 200
-        response0._content = 'Mocked response content'
-        response0.headers = {
-            'Cache-Control': 'max-age=1',
-            'ETag': '"fdcd6016cf6059cbbf418d66a51a6b0a"',
-        }
-
-        response1 = Response()
-        response1.status_code = 304
-        response1._content = ''
-        response1.headers = {
-            'Cache-Control': 'max-age=2',
-        }
-        mock_request.side_effect = [response0, response1, response1, response1]
-
-        get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 1)
-
-        # Move time forward 1 second
-        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=1)
-
-        r = get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 2)
-        self.assertEqual(r.status_code, 304)
-        self.assertEqual(r.content, 'Mocked response content')
-        self.assertEqual(r.headers['Cache-Control'], 'max-age=2')
-
-        r = get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 2)
-        self.assertEqual(r.status_code, 304)
-        self.assertEqual(r.content, 'Mocked response content')
-
-        # Move time forward 3 seconds (1 + 2)
-        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=3)
-
-        r = get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 3)
-        self.assertEqual(r.status_code, 304)
-        self.assertEqual(r.content, 'Mocked response content')
-        self.assertEqual(r.headers['Cache-Control'], 'max-age=2')
-
-    def test_get_304_cache_not_exist(self, mock_request):
-        response0 = Response()
-        response0.status_code = 200
-        response0._content = 'Mocked response content X'
-        response0.headers = {
-            'Cache-Control': 'max-age=10',
-            'ETag': '"fdcd6016cf6059cbbf418d66a51a6b0a"',
-            }
-
-        response1 = Response()
-        response1.status_code = 304
-        response1._content = ''
-        response1.headers = {
-            'Cache-Control': 'max-age=10',
-            }
-
-        response2 = Response()
-        response2.status_code = 200
-        response2._content = 'Mocked response content Y'
-        response2.headers = {
-            'Cache-Control': 'max-age=10',
-            'ETag': '"a0b6a15a66d814fbbc9506fc6106dcdf"',
-            }
-
-        mock_request.side_effect = [response0, response1, response2]
-
-        r = get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 1)
-        self.assertEqual(r.content, 'Mocked response content X')
-
-        self.cache.clear()
-
-        r = get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 3)
-        self.assertEqual(r.content, 'Mocked response content Y')
-
-        r = get('http://www.test.com/path')
-        self.assertEqual(mock_request.call_count, 3)
-        self.assertEqual(r.content, 'Mocked response content Y')
+@patch('requests.sessions.Session.request')
+class TestCookie(BaseTestCase):
+    """
+    Test cookie mechanism
+    """
 
     def test_cookie_without_domain_and_path(self, mock_request):
         response0 = Response()
@@ -793,112 +961,4 @@ class TestApi(BaseTestCase):
         mock_request.assert_called_with('GET', 'http://www.test.com/path', allow_redirects=True,
             cookies={'a': 'anchovies', 'b': 'banana'}
         )
-
-
-    def test_not_cache_hop_by_hop_headers(self, mock_get):
-        """
-        Test hop-by-hop headers are not cached
-        """
-        response = Response()
-        response.status_code = 200
-        response._content = 'Mocked response content'
-        response.headers = {
-            'Cache-Control': 'max-age=10',
-            'euam': 'hello',
-            'connection': 'abc',
-            'keep-alive': '1',
-            'proxy-authenticate': 'somehthing',
-            'proxy-authorization': 'yo',
-            'te': 'yeah',
-            'trailers': 3,
-            'transfer-encoding': 'text',
-            'upgrade': 'true'
-            }
-        mock_get.return_value = response
-
-        # assert that first time we get the response still have all of the hop-by-hop headers
-        result = get('http://www.test.com/path/1')
-        self.assertEqual(mock_get.call_count, 1)
-        self.assertIn('connection', result.headers)
-        self.assertIn('keep-alive', result.headers)
-        self.assertIn('proxy-authenticate', result.headers)
-        self.assertIn('proxy-authorization', result.headers)
-        self.assertIn('te', result.headers)
-        self.assertIn('trailers', result.headers)
-        self.assertIn('transfer-encoding', result.headers)
-        self.assertIn('upgrade', result.headers)
-
-        # should not get hop-by-hop headers when get from cache
-        result = get('http://www.test.com/path/1')
-        self.assertEqual(mock_get.call_count, 1)
-        self.assertNotIn('connection', result.headers)
-        self.assertNotIn('keep-alive', result.headers)
-        self.assertNotIn('proxy-authenticate', result.headers)
-        self.assertNotIn('proxy-authorization', result.headers)
-        self.assertNotIn('te', result.headers)
-        self.assertNotIn('trailers', result.headers)
-        self.assertNotIn('transfer-encoding', result.headers)
-        self.assertNotIn('upgrade', result.headers)
-
-
-    def test_return_hop_headers_if_not_return_from_cache(self, mock_get):
-        """
-        Test hop-by-hop headers are not cached
-        """
-        response = Response()
-        response.status_code = 200
-        response._content = 'Mocked response content'
-        response.headers = {
-            'connection': 'abc',
-            'keep-alive': '1',
-            'proxy-authenticate': 'somehthing',
-            'proxy-authorization': 'yo',
-            'te': 'yeah',
-            'trailers': 3,
-            'transfer-encoding': 'text',
-            'upgrade': 'true'
-        }
-        mock_get.return_value = response
-
-        result = get('http://www.test.com/path/1')
-        self.assertEqual(mock_get.call_count, 1)
-        self.assertIn('connection', result.headers)
-        self.assertIn('keep-alive', result.headers)
-        self.assertIn('proxy-authenticate', result.headers)
-        self.assertIn('proxy-authorization', result.headers)
-        self.assertIn('te', result.headers)
-        self.assertIn('trailers', result.headers)
-        self.assertIn('transfer-encoding', result.headers)
-        self.assertIn('upgrade', result.headers)
-
-        result = get('http://www.test.com/path/1')
-        self.assertEqual(mock_get.call_count, 2)
-        self.assertIn('connection', result.headers)
-        self.assertIn('keep-alive', result.headers)
-        self.assertIn('proxy-authenticate', result.headers)
-        self.assertIn('proxy-authorization', result.headers)
-        self.assertIn('te', result.headers)
-        self.assertIn('trailers', result.headers)
-        self.assertIn('transfer-encoding', result.headers)
-        self.assertIn('upgrade', result.headers)
-
-
-    def test_not_return_cached_value_if_request_said_no_cache(self, mock_get):
-        response = Response()
-        response.status_code = 200
-        response._content = 'Mocked response content'
-        response.headers = {
-            'Cache-Control': 'max-age=10',
-            'hello': 'world'
-        }
-        mock_get.return_value = response
-
-        result = get('http://www.test.com/path/1', headers={'Cache-Control': 'no-cache'})
-        self.assertEqual(mock_get.call_count, 1)
-        result = get('http://www.test.com/path/1')
-        self.assertEqual(mock_get.call_count, 1)
-        result = get('http://www.test.com/path/1', headers={'Cache-Control': 'no-cache'})
-        self.assertEqual(mock_get.call_count, 2)
-        result = get('http://www.test.com/path/1', headers={'Cache-Control': 'no-cache'})
-        self.assertEqual(mock_get.call_count, 3)
 
