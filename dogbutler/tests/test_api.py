@@ -836,64 +836,94 @@ class TestCookie(BaseTestCase):
     Test cookie mechanism
     """
 
-    def test_cookie_without_domain_and_path(self, mock_request):
+    def test_origin_cookie_without_path(self, mock_request):
+        """
+        Test origin cookie (cookie without domain)
+        """
         response0 = Response()
         response0.headers = {
-            'Set-Cookie': 'name=value;, name2=value2; max-age=20'
+            'Set-Cookie': 'a=apple;, b=banana; max-age=20'
         }
-        response0.url = 'http://www.test.com/path0'
+        response0.url = 'http://fruits.com/path0'
 
         response1 = Response()
         response1.headers = {
-            'Set-Cookie': 'name=new_value;, name3=value3; max-age=20'
+            'Set-Cookie': 'a=apricot;, c=citrus; max-age=20'
         }
-        response1.url = 'http://www.test.com/path1'
+        response1.url = 'http://fruits.com/path1'
 
         response2 = Response()
         response2.headers = {
-            'Set-Cookie': 'other_name=value;, other_name2=value2; max-age=20'
+            'Set-Cookie': 'd=durian;, e=eggfruit; max-age=20'
         }
-        response2.url = 'http://www.test.com/path2'
+        response2.url = 'http://fruits.com/path2'
 
-#        response3 = Response()
-#        response3.headers = {
-#            'Set-Cookie': 'name3=value3; domain=www.test.com'
-#        }
+        response3 = Response()
+        response3.headers = {}
+        response3.url = 'http://sub.fruits.com/'
 
-#        mock_request.side_effect = [response0, response3, response0, response1, response2, response2, response0]
-        mock_request.side_effect = [response0, response1, response2]
+        response4 = Response()
+        response4.headers = {
+            'Set-Cookie': 'a=antelope;, b=bear; max-age=20'
+        }
+        response4.url = 'http://www.animals.com/path1/'
 
-        response = get('http://www.test.com/path0')
-        mock_request.assert_called_with('GET', 'http://www.test.com/path0', allow_redirects=True)
+        response5 = Response()
+        response5.headers = {}
+        response5.url = 'http://www.animals.com/path2/'
+
+        mock_request.side_effect = [response0, response1, response2, response3, response4, response5, response0]
+
+
+        # Test fruits.com domain
+        get('http://fruits.com/path0')
+        mock_request.assert_called_with('GET', 'http://fruits.com/path0', allow_redirects=True)
 
         #all later calls of same domain must send cookies in header
-        response = get('http://www.test.com/path1')
-        mock_request.assert_called_with('GET', 'http://www.test.com/path1', cookies={'name': 'value', 'name2': 'value2'}, allow_redirects=True)
+        get('http://fruits.com/path1')
+        mock_request.assert_called_with('GET', 'http://fruits.com/path1', allow_redirects=True,
+            cookies={'a': 'apple', 'b': 'banana'})
 
-        response = get('http://www.test.com/path2')
-        mock_request.assert_called_with('GET', 'http://www.test.com/path2', cookies={'name': 'new_value', 'name2': 'value2', 'name3': 'value3'}, allow_redirects=True)
+        get('http://fruits.com/path2')
+        mock_request.assert_called_with('GET', 'http://fruits.com/path2', allow_redirects=True,
+            cookies={'a': 'apricot', 'b': 'banana', 'c': 'citrus'})
 
-#        response = get('http://www.test.com/some_other_path2/')
-#        mock_request.assert_called_with('http://www.test.com/some_other_path2/', cookies={'name2': 'value2', 'name3': 'value3', 'name': 'value'})
-#
-#        # other domain get no cookies
-#        response = get('http://www.other_domain.com/some_other_path2/')
-#        mock_request.assert_called_with('http://www.other_domain.com/some_other_path2/')
-#
-#        # other domain get their cookies
-#        response = get('http://www.othertest.com/')
-#
-#        self.assertIsNotNone(self.cookie_cache.get('www.othertest.com'))
-#        self.assertIsNotNone(self.cookie_cache.get('www.othertest.com.other_name'))
-#        self.assertIsNotNone(self.cookie_cache.get('www.othertest.com.other_name2'))
-#
-#        response = get('http://www.othertest.com/some_other_path2/')
-#        mock_request.assert_called_with('http://www.othertest.com/some_other_path2/', cookies={'other_name2': 'value2', 'other_name': 'value'})
-#
-#        #call first one again, make sure we still send cookie
-#        response = get('http://www.test.com/some_other_path/')
-#        mock_request.assert_called_with('http://www.test.com/some_other_path/', cookies={'name2': 'value2', 'name3': 'value3', 'name': 'value'})
-#
+        # Sub-domains of fruits.com should not send cookies
+        get('http://sub.fruits.com/')
+        mock_request.assert_called_with('GET', 'http://sub.fruits.com/', allow_redirects=True)
+
+        # Other domain, www.animals.com, should not send cookies
+        get('http://www.animals.com/path1/')
+        mock_request.assert_called_with('GET', 'http://www.animals.com/path1/', allow_redirects=True)
+
+        # www.animals.com should get their cookies
+        get('http://www.animals.com/path2/')
+        mock_request.assert_called_with('GET', 'http://www.animals.com/path2/', allow_redirects=True,
+            cookies={'a': 'antelope', 'b': 'bear'})
+
+        #call fruits.com again, make sure we still send cookie
+        get('http://fruits.com/path4/')
+        mock_request.assert_called_with('GET', 'http://fruits.com/path4/', allow_redirects=True,
+            cookies={'a': 'apricot', 'b': 'banana', 'c': 'citrus', 'd': 'durian', 'e': 'eggfruit'})
+
+    def test_domain_cookie_without_path(self, mock_request):
+        response0 = Response()
+        response0.status_code = 200
+        response0._content = 'Mocked response content'
+        response0.headers = {
+            'Set-Cookie': 'name=value; Domain=test.com'
+        }
+        response0.url = 'http://www.fruits.com/cookie'
+
+        mock_request.return_value = response0
+
+        get('http://www.test.com/cookie')
+
+        #all later calls of same domain must send cookies in header
+        get('http://www.test.com/some_other_path/')
+        mock_request.assert_called_with('GET', 'http://www.test.com/some_other_path/', allow_redirects=True,
+            cookies={'name': 'value'})
+
 #    def test_expired_cookie(self, mock_request):
 #
 #        expire_string = _getdate(future=3)
@@ -921,21 +951,7 @@ class TestCookie(BaseTestCase):
 #        response = get('http://www.othertest.com/some_other_path/')
 #        mock_request.assert_called_with('http://www.othertest.com/some_other_path/')
 #
-#    def test_cookie_with_domain(self, mock_request):
-#        response0 = Response()
-#        response0.status_code = 200
-#        response0._content = 'Mocked response content'
-#        response0.headers = {
-#            'Set-Cookie': 'name=value; Domain=www.test.com'
-#        }
-#
-#        mock_request.return_value = response0
-#
-#        get('http://www.test.com/cookie')
-#
-#        #all later calls of same domain must send cookies in header
-#        get('http://www.test.com/some_other_path/')
-#        mock_request.assert_called_with('http://www.test.com/some_other_path/', cookies={'name': 'value'})
+
 
 
     def test_user_defined_cookie(self, mock_request):
