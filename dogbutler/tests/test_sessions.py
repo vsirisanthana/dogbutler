@@ -149,3 +149,18 @@ class TestSessions(BaseTestCase):
         r = s1.get('http://www.test.com/neverseemeagain')
         mock_request.assert_called_with('GET', 'http://www.test.com/redirect_3', allow_redirects=True)
         self.assertEqual(r.status_code, 200)
+
+    def test_post(self, mock_request):
+        """
+        Test that a session can call POST request
+        """
+        response = Response()
+        response.status_code = 201
+        response._content = 'Mocked response content'
+        mock_request.return_value = response
+
+        s = Session()
+
+        s.post('http://www.test.com/path', data={'a': 'apple', 'b': 'banana'})
+        self.assertEqual(mock_request.call_count, 1)
+        mock_request.assert_called_with('POST', 'http://www.test.com/path', data={'a': 'apple', 'b': 'banana'})
