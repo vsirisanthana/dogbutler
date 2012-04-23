@@ -26,6 +26,7 @@ class RedirectManager(object):
             redirect_to = self.cache.get(self.get_cache_key(url))
             if redirect_to is None:
                 break
+            history.append(url)
             url = redirect_to
         request.url = url
 

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 from dummycache import cache as dummycache_cache
 from mock import patch
+from requests.exceptions import TooManyRedirects
 from requests.models import Response
 
 from dogbutler import get
@@ -829,6 +830,34 @@ class TestRedirect(BaseTestCase):
         self.assertEqual(mock_request.call_count, 1)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.content, 'Mocked response content')
+
+    def test_get_301_circular_redirect(self, mock_request):
+        response0 = Response()
+        response0.url = 'http://www.test.com/path0'
+        response0.status_code = 301
+        response0.headers = {'Location': 'http://www.test.com/path1'}
+
+        response1 = Response()
+        response1.url = 'http://www.test.com/path1'
+        response1.status_code = 301
+        response1.headers = {'Location': 'http://www.test.com/path0'}
+
+        response2 = Response()
+        response2.url = 'http://www.test.com/path2'
+        response2.status_code = 200
+        response2._content = 'Mocked response content'
+        response2.history = [response0, response1]
+
+        mock_request.return_value = response2
+
+
+        r = get('http://www.test.com/path0')
+        self.assertEqual(mock_request.call_count, 1)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.content, 'Mocked response content')
+
+        with self.assertRaises(TooManyRedirects):
+            get('http://www.test.com/path0')
 
 
 @patch('requests.sessions.Session.request')
