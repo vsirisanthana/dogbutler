@@ -1,4 +1,5 @@
 from base import BaseTestCase
+from dogbutler import cache
 from dogbutler.cache import CacheManager
 from dogbutler.models import Request
 
@@ -8,6 +9,17 @@ class TestCache(BaseTestCase):
     def setUp(self):
         super(TestCache, self).setUp()
         self.cache_manager = CacheManager(key_prefix='test_cache', cache=self.cache)
+
+    def test_check_cache_head_request(self):
+        self._orig_get_cache_key = cache.get_cache_key
+        cache.get_cache_key = lambda *args, **kwargs: 'fake_key'
+
+        request = Request('http://www.test.com/path', method='HEAD')
+        response = self.cache_manager.check_cache(request)
+        self.assertIsNone(response)
+        self.assertTrue(request._cache_update_cache)
+
+        cache.get_cache_key = self._orig_get_cache_key
 
     def test_check_cache_ignore_post_request(self):
         """
