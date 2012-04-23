@@ -1,3 +1,4 @@
+from Cookie import _getdate
 from datetime import datetime, timedelta
 
 from dummycache import cache as dummycache_cache
@@ -836,9 +837,9 @@ class TestCookie(BaseTestCase):
     Test cookie mechanism
     """
 
-    def test_origin_cookie_without_path(self, mock_request):
+    def test_origin_cookie(self, mock_request):
         """
-        Test origin cookie (cookie without domain)
+        Test origin cookies (cookies without 'Domain') without 'Path'
         """
         response0 = Response()
         response0.headers = {
@@ -906,53 +907,88 @@ class TestCookie(BaseTestCase):
         mock_request.assert_called_with('GET', 'http://fruits.com/path4/', allow_redirects=True,
             cookies={'a': 'apricot', 'b': 'banana', 'c': 'citrus', 'd': 'durian', 'e': 'eggfruit'})
 
-    def test_domain_cookie_without_path(self, mock_request):
+    def test_domain_cookie(self, mock_request):
+        """
+        Test domain cookies without 'Path'
+        """
         response0 = Response()
         response0.status_code = 200
         response0._content = 'Mocked response content'
         response0.headers = {
-            'Set-Cookie': 'name=value; Domain=test.com'
+            'Set-Cookie': 'a=apple; Domain=fruits.com;, ' +
+                          'b=banana; Domain=fruits.com;, ' +
+                          'c=citrus; Domain=mediterranean.fruits.com;, ' +
+                          'm=mango; Domain=tropical.fruits.com;'
         }
-        response0.url = 'http://www.fruits.com/cookie'
-
+        response0.url = 'http://mediterranean.fruits.com/path0'
         mock_request.return_value = response0
 
-        get('http://www.test.com/cookie')
+        get('http://mediterranean.fruits.com/path0')    # Initial request. No cookies.
+        mock_request.assert_called_with('GET', 'http://mediterranean.fruits.com/path0', allow_redirects=True)
 
-        #all later calls of same domain must send cookies in header
-        get('http://www.test.com/some_other_path/')
-        mock_request.assert_called_with('GET', 'http://www.test.com/some_other_path/', allow_redirects=True,
-            cookies={'name': 'value'})
+        get('http://mediterranean.fruits.com/path1')    # 'a', 'b', and 'c' cookies should be present.
+        mock_request.assert_called_with('GET', 'http://mediterranean.fruits.com/path1', allow_redirects=True,
+            cookies={'a': 'apple', 'b': 'banana', 'c': 'citrus'})
 
-#    def test_expired_cookie(self, mock_request):
-#
-#        expire_string = _getdate(future=3)
-#        response = Response()
-#        response.status_code = 200
-#        response._content = 'Mocked response content'
-#        response.headers = {
-#            'Set-Cookie': 'other_name=value; expires=%s;, other_name2=value2;max-age=6' % expire_string
-#        }
-#        response.cookies = dict_from_string(response.headers['Set-Cookie'])
-#
-#
-#        mock_request.return_value = response
-#        response = get('http://www.othertest.com/some_other_path2/')
-#
-#        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=1)
-#        response = get('http://www.othertest.com/some_other_path/')
-#        mock_request.assert_called_with('http://www.othertest.com/some_other_path/', cookies={'other_name2': 'value2', 'other_name': 'value'})
-#
-#        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=4)
-#        response = get('http://www.othertest.com/some_other_path/')
-#        mock_request.assert_called_with('http://www.othertest.com/some_other_path/', cookies={'other_name2': 'value2'})
-#
-#        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=11)
-#        response = get('http://www.othertest.com/some_other_path/')
-#        mock_request.assert_called_with('http://www.othertest.com/some_other_path/')
-#
+        get('http://tropical.fruits.com/path2')         # 'a', 'b', and 'm' cookies should be present.
+        mock_request.assert_called_with('GET', 'http://tropical.fruits.com/path2', allow_redirects=True,
+            cookies={'a': 'apple', 'b': 'banana', 'm': 'mango'})
 
+        get('http://www.fruits.com/path3')              # 'a' and 'b' cookies should be present.
+        mock_request.assert_called_with('GET', 'http://www.fruits.com/path3', allow_redirects=True,
+            cookies={'a': 'apple', 'b': 'banana'})
 
+        get('http://fruits.com/path4')                  # 'a' and 'b' cookies should be present.
+        mock_request.assert_called_with('GET', 'http://fruits.com/path4', allow_redirects=True,
+            cookies={'a': 'apple', 'b': 'banana'})
+
+        get('http://animals.com/path5')                 # Different domain. No cookies should be present.
+        mock_request.assert_called_with('GET', 'http://animals.com/path5', allow_redirects=True)
+
+        response1 = Response()
+        response1.status_code = 200
+        response1._content = 'Mocked response content'
+        response1.headers = {
+            'Set-Cookie': 'a=apricot; Domain=fruits.com;, ' +
+                          'b=; Domain=fruits.com;, ' +
+                          'm=melon; Domain=tropical.fruits.com;'
+        }
+        response1.url = 'http://tropical.fruits.com/path0'
+        mock_request.return_value = response1
+
+        get('http://tropical.fruits.com/path0')         # Still called with previous cookies
+        mock_request.assert_called_with('GET', 'http://tropical.fruits.com/path0', allow_redirects=True,
+            cookies={'a': 'apple', 'b': 'banana', 'm': 'mango'})
+
+        get('http://tropical.fruits.com/path1')         # called with new cookies
+        mock_request.assert_called_with('GET', 'http://tropical.fruits.com/path1', allow_redirects=True,
+            cookies={'a': 'apricot', 'b': '', 'm': 'melon'})
+
+    def test_expired_cookie(self, mock_request):
+        response = Response()
+        response.status_code = 200
+        response._content = 'Mocked response content'
+        response.headers = {
+            'Set-Cookie': 'a=apple; expires=%s;, b=banana; max-age=6' % _getdate(future=3)
+        }
+        response.url = 'http://www.fruits.com'
+        mock_request.return_value = response
+
+        get('http://www.fruits.com/path')
+
+        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=1)
+        get('http://www.fruits.com/path')
+        mock_request.assert_called_with('GET', 'http://www.fruits.com/path', allow_redirects=True,
+            cookies={'a': 'apple', 'b': 'banana'})
+
+        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=4)
+        get('http://www.fruits.com/path')
+        mock_request.assert_called_with('GET', 'http://www.fruits.com/path', allow_redirects=True,
+            cookies={'b': 'banana'})
+
+        dummycache_cache.datetime.now = lambda: datetime.now() + timedelta(seconds=11)
+        get('http://www.fruits.com/path')
+        mock_request.assert_called_with('GET', 'http://www.fruits.com/path', allow_redirects=True)
 
     def test_user_defined_cookie(self, mock_request):
         """
