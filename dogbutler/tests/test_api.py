@@ -310,7 +310,7 @@ class TestClientSideCache(BaseTestCase):
         self.assertEqual(mock_request.call_count, 1)
         self.assertEqual(response.status_code, 404)
 
-    def test_not_return_cached_value_if_request_said_no_cache(self, mock_get):
+    def test_get_not_return_cached_value_if_request_said_no_cache(self, mock_request):
         response = Response()
         response.status_code = 200
         response._content = 'Mocked response content'
@@ -318,18 +318,18 @@ class TestClientSideCache(BaseTestCase):
             'Cache-Control': 'max-age=10',
             'hello': 'world'
         }
-        mock_get.return_value = response
+        mock_request.return_value = response
 
         result = get('http://www.test.com/path/1', headers={'Cache-Control': 'no-cache'})
-        self.assertEqual(mock_get.call_count, 1)
+        self.assertEqual(mock_request.call_count, 1)
         result = get('http://www.test.com/path/1')
-        self.assertEqual(mock_get.call_count, 1)
+        self.assertEqual(mock_request.call_count, 1)
         result = get('http://www.test.com/path/1', headers={'Cache-Control': 'no-cache'})
-        self.assertEqual(mock_get.call_count, 2)
+        self.assertEqual(mock_request.call_count, 2)
         result = get('http://www.test.com/path/1', headers={'Cache-Control': 'no-cache'})
-        self.assertEqual(mock_get.call_count, 3)
+        self.assertEqual(mock_request.call_count, 3)
 
-    def test_not_cache_hop_by_hop_headers(self, mock_get):
+    def test_get_not_cache_hop_by_hop_headers(self, mock_request):
         """
         Test hop-by-hop headers are not cached
         """
@@ -348,11 +348,11 @@ class TestClientSideCache(BaseTestCase):
             'transfer-encoding': 'text',
             'upgrade': 'true'
         }
-        mock_get.return_value = response
+        mock_request.return_value = response
 
         # assert that first time we get the response still have all of the hop-by-hop headers
         result = get('http://www.test.com/path/1')
-        self.assertEqual(mock_get.call_count, 1)
+        self.assertEqual(mock_request.call_count, 1)
         self.assertIn('connection', result.headers)
         self.assertIn('keep-alive', result.headers)
         self.assertIn('proxy-authenticate', result.headers)
@@ -364,7 +364,7 @@ class TestClientSideCache(BaseTestCase):
 
         # should not get hop-by-hop headers when get from cache
         result = get('http://www.test.com/path/1')
-        self.assertEqual(mock_get.call_count, 1)
+        self.assertEqual(mock_request.call_count, 1)
         self.assertNotIn('connection', result.headers)
         self.assertNotIn('keep-alive', result.headers)
         self.assertNotIn('proxy-authenticate', result.headers)
@@ -374,7 +374,7 @@ class TestClientSideCache(BaseTestCase):
         self.assertNotIn('transfer-encoding', result.headers)
         self.assertNotIn('upgrade', result.headers)
 
-    def test_return_hop_headers_if_not_return_from_cache(self, mock_get):
+    def test_get_return_hop_headers_if_not_return_from_cache(self, mock_request):
         """
         Test hop-by-hop headers are not cached
         """
@@ -391,10 +391,10 @@ class TestClientSideCache(BaseTestCase):
             'transfer-encoding': 'text',
             'upgrade': 'true'
         }
-        mock_get.return_value = response
+        mock_request.return_value = response
 
         result = get('http://www.test.com/path/1')
-        self.assertEqual(mock_get.call_count, 1)
+        self.assertEqual(mock_request.call_count, 1)
         self.assertIn('connection', result.headers)
         self.assertIn('keep-alive', result.headers)
         self.assertIn('proxy-authenticate', result.headers)
@@ -405,7 +405,7 @@ class TestClientSideCache(BaseTestCase):
         self.assertIn('upgrade', result.headers)
 
         result = get('http://www.test.com/path/1')
-        self.assertEqual(mock_get.call_count, 2)
+        self.assertEqual(mock_request.call_count, 2)
         self.assertIn('connection', result.headers)
         self.assertIn('keep-alive', result.headers)
         self.assertIn('proxy-authenticate', result.headers)
