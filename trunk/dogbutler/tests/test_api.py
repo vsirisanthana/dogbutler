@@ -1014,3 +1014,23 @@ class TestCookie(BaseTestCase):
             cookies={'a': 'anchovies', 'b': 'banana'}
         )
 
+    def test_cookie_path_end_with_slash(self, mock_request):
+        """
+        Test that the ending slash in 'Path' is ignored
+        """
+        response = Response()
+        response.headers = {'Set-Cookie': 'a=apple; Path=/path0/;, ' +
+                                          'b=banana; Path=/path0/path1;'}
+        response.url = 'http://www.fruits.com/path0'
+        mock_request.return_value = response
+
+        get('http://www.fruits.com/path0')
+        mock_request.assert_called_with('GET', 'http://www.fruits.com/path0', allow_redirects=True)
+
+        get('http://www.fruits.com/path0')
+        mock_request.assert_called_with('GET', 'http://www.fruits.com/path0', allow_redirects=True,
+            cookies={'a': 'apple'})
+
+        get('http://www.fruits.com/path0/path1')
+        mock_request.assert_called_with('GET', 'http://www.fruits.com/path0/path1', allow_redirects=True,
+            cookies={'a': 'apple', 'b': 'banana'})

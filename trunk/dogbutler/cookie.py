@@ -157,7 +157,7 @@ class CookieManager(object):
 
         if request_path == cookie['path']:
             return True
-        elif cookie['path'].endswith('/') and request_path.startswith(cookie['path']):
+        elif cookie['path'].endswith('/') and request_path.startswith(cookie['path'][:-1]):
             return True
         elif request_path.startswith(cookie['path']) and request_path[len(cookie['path'])] == '/':
             return True
