@@ -48,8 +48,9 @@ def is_domain_valid(domain):
 def normalize_domain(domain):
     return domain.lstrip('.')
 
-def normalize_path(path):
-    return path.rstip('/') if path != '/' else path
+# Not used
+#def normalize_path(path):
+#    return path.rstip('/') if path != '/' else path
 
 
 class CookieManager(object):
@@ -150,8 +151,9 @@ class CookieManager(object):
             return True
         request_path = urlparse(url).path
 
-        if not request_path.startswith('/'):
-            request_path = '/' + request_path
+        # This never happens in real system. request_path always starts with /.
+#        if not request_path.startswith('/'):
+#            request_path = '/' + request_path
 
         if request_path == cookie['path']:
             return True
